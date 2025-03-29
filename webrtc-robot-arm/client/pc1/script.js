@@ -1,3 +1,4 @@
+// WebRTC 설정
 const configuration = {
     iceServers: [
         { urls: "stun:stun.l.google.com:19302" }
@@ -31,16 +32,37 @@ peerConnection.createOffer()
         ws.send(JSON.stringify({ type: "offer", sdp: peerConnection.localDescription }));
     });
 
-window.addEventListener("gamepadconnected", (e) => {
-    console.log("Joystick connected:", e.gamepad);
-    setInterval(() => {
-        const gamepad = navigator.getGamepads()[e.gamepad.index];
-        const joystickData = {
-            axes: gamepad.axes,
-            buttons: gamepad.buttons.map(b => b.pressed)
-        };
-        if (dataChannel.readyState === "open") {
-            dataChannel.send(JSON.stringify(joystickData));
-        }
-    }, 100);
+// ROS 2와 연결
+const ros = new ROSLIB.Ros({
+    url: 'ws://localhost:9090'  // rosbridge WebSocket 서버
+});
+
+ros.on('connection', () => {
+    console.log('Connected to ROS 2 via rosbridge');
+});
+
+ros.on('error', (error) => {
+    console.log('Error connecting to ROS 2:', error);
+});
+
+ros.on('close', () => {
+    console.log('Disconnected from ROS 2');
+});
+
+// /joy 토픽 구독
+const joyListener = new ROSLIB.Topic({
+    ros: ros,
+    name: '/joy',
+    messageType: 'sensor_msgs/Joy'
+});
+
+joyListener.subscribe((message) => {
+    console.log('Received joystick data:', message);
+    const joystickData = {
+        axes: message.axes,
+        buttons: message.buttons
+    };
+    if (dataChannel.readyState === "open") {
+        dataChannel.send(JSON.stringify(joystickData));
+    }
 });
