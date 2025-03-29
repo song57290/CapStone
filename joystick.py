@@ -20,8 +20,8 @@ class JoystickPublisher(Node):
         axis_x = self.joystick.get_axis(0)    # X축: Axis 0
         axis_y = -self.joystick.get_axis(1)   # Y축: Axis 1 (반전)
         axis_z = -self.joystick.get_axis(4)   # Z축: Axis 4 (반전)
-        grip_button = self.joystick.get_button(0)  # 잡기: Button 0
-        release_button = self.joystick.get_button(1)  # 놓기: Button 1
+        grip_button = self.joystick.get_button(4)  # 잡기: Button 0
+        release_button = self.joystick.get_button(5)  # 놓기: Button 1
 
         joy_msg = Joy()
         joy_msg.header.stamp = self.get_clock().now().to_msg()
