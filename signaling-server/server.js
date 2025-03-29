@@ -15,4 +15,4 @@ wss.on('connection', (ws) => {
     });
 });
 
-console.log('Signaling server running on ws://localhost:8080');
+console.log('Signaling server running on ws://0.0.0.0:8080');
