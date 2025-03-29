@@ -62,6 +62,15 @@ joyListener.subscribe((message) => {
         axes: message.axes,
         buttons: message.buttons
     };
+    // HTML에 데이터 표시
+    document.getElementById("joystick-data").innerHTML = `
+        <p>X축: ${message.axes[0].toFixed(2)}</p>
+        <p>Y축: ${message.axes[1].toFixed(2)}</p>
+        <p>Z축: ${message.axes[2].toFixed(2)}</p>
+        <p>버튼 잡기(LB): ${message.buttons[0]}</p>
+        <p>버튼 잡기(RB): ${message.buttons[1]}</p>
+    `;
+    // WebRTC를 통해 PC2로 데이터 전송
     if (dataChannel.readyState === "open") {
         dataChannel.send(JSON.stringify(joystickData));
     }
