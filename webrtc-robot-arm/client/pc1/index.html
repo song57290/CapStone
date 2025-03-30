@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>실시간 조이스틱 데이터</title>
+  <style>
+    body { font-family: Arial, sans-serif; background-color: #f0f0f0; }
+    #data { font-size: 1.5em; padding: 20px; background: #fff; border: 1px solid #ddd; margin: 20px; }
+  </style>
+</head>
+<body>
+  <h1>실시간 조이스틱 데이터</h1>
+  <div id="data">연결 대기중...</div>
+
+  <script>
+    const ws = new WebSocket('ws://127.0.0.1:8080');
+
+    ws.onopen = () => {
+      document.getElementById('data').innerText = '연결 성공, 데이터 수신 대기중...';
+    };
+
+    ws.onmessage = (event) => {
+      // event.data가 Blob이면 텍스트로 변환
+      if (event.data instanceof Blob) {
+        event.data.text().then(text => {
+          try {
+            const joystickData = JSON.parse(text);
+            document.getElementById('data').innerText = 
+              `X: ${joystickData.x}
+              Y: ${joystickData.y}
+              Z: ${joystickData.z}
+              잡기(LB): ${joystickData.lb}
+              놓기(RB): ${joystickData.rb}`;
+          } catch (error) {
+            document.getElementById('data').innerText = '데이터 파싱 오류: ' + text;
+          }
+        });
+      } else {
+        try {
+          const joystickData = JSON.parse(event.data);
+          document.getElementById('data').innerText = 
+            `X: ${joystickData.x}, Y: ${joystickData.y}, Z: ${joystickData.z}`;
+        } catch (error) {
+          document.getElementById('data').innerText = '데이터 파싱 오류: ' + event.data;
+        }
+      }
+    };
+
+    ws.onerror = (error) => {
+      document.getElementById('data').innerText = 'WebSocket 에러: ' + error;
+    };
+
+    ws.onclose = () => {
+      document.getElementById('data').innerText = '연결 종료됨';
+    };
+  </script>
+</body>
+</html>
