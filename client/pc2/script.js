@@ -19,6 +19,7 @@ async function setupWebRTC() {
         // ICE 후보 처리
         pc.onicecandidate = (event) => {
             if (event.candidate) {
+                console.log("PC2: Sending ICE candidate:", event.candidate);
                 ws.send(JSON.stringify({ type: "candidate", candidate: event.candidate }));
             }
         };
@@ -26,9 +27,15 @@ async function setupWebRTC() {
         // 데이터 채널 수신
         pc.ondatachannel = (event) => {
             const dataChannel = event.channel;
+            dataChannel.onopen = () => {
+                console.log("PC2: Data channel opened");
+            };
+            dataChannel.onclose = () => {
+                console.log("PC2: Data channel closed");
+            };
             dataChannel.onmessage = (event) => {
                 const joystickData = JSON.parse(event.data);
-                console.log("Received joystick data:", joystickData);
+                console.log("PC2: Received joystick data:", joystickData);
                 document.getElementById("joystick-data").innerHTML = `
                     <p>X축: ${joystickData.axes[0].toFixed(2)}</p>
                     <p>Y축: ${joystickData.axes[1].toFixed(2)}</p>
@@ -41,26 +48,36 @@ async function setupWebRTC() {
 
         // 시그널링 서버 연결
         ws.onopen = () => {
-            console.log("Connected to signaling server");
+            console.log("PC2: Connected to signaling server");
         };
 
         ws.onerror = (error) => {
-            console.log("Signaling server error:", error);
+            console.log("PC2: Signaling server error:", error);
+        };
+
+        ws.onclose = () => {
+            console.log("PC2: Signaling server connection closed");
         };
 
         ws.onmessage = async (event) => {
             const message = JSON.parse(event.data);
+            console.log("PC2: Received message:", message);
             if (message.type === "offer") {
+                console.log("PC2: Setting remote description");
                 await pc.setRemoteDescription(new RTCSessionDescription(message));
+                console.log("PC2: Creating answer");
                 const answer = await pc.createAnswer();
+                console.log("PC2: Setting local description");
                 await pc.setLocalDescription(answer);
+                console.log("PC2: Sending answer");
                 ws.send(JSON.stringify(answer));
             } else if (message.type === "candidate") {
+                console.log("PC2: Adding ICE candidate");
                 await pc.addIceCandidate(new RTCIceCandidate(message.candidate));
             }
         };
     } catch (error) {
-        console.error("Error setting up WebRTC:", error);
+        console.error("PC2: Error setting up WebRTC:", error);
     }
 }
 
