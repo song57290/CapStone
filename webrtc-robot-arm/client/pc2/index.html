@@ -5,13 +5,14 @@
   <title>PC2 - 조이스틱 데이터 수신 및 화면 송출</title>
   <style>
     #status { font-weight: bold; margin-bottom: 10px; }
-    #joystickData { margin-bottom: 10px; }
+    #joystickData { font-size: 1.2em; margin-bottom: 10px; }
     video { width: 640px; height: 480px; background: #000; }
   </style>
 </head>
 <body>
   <h1>PC2: 조이스틱 데이터 수신 및 화면 송출</h1>
   <div id="status">연결 대기중...</div>
+  <!-- 수신된 조이스틱 데이터 표시 -->
   <div id="joystickData">수신 데이터 없음</div>
   <video id="localVideo" autoplay playsinline muted></video>
   
@@ -22,8 +23,6 @@
   <script>
     // 시그널링 서버 URL (Railway)
     const signalingServer = 'https://sincere-kindness-production.up.railway.app';
-    
-    // transports 옵션 추가
     const socket = io(signalingServer, { transports: ['websocket'] });
     
     socket.on("connect", () => {
@@ -62,19 +61,23 @@
       console.log("PC2: Peer 연결 성공");
     });
     
-    // 데이터 채널을 통해 조이스틱 데이터 수신
+    // 데이터 채널을 통해 조이스틱 데이터 수신 및 표시
     peer.on('data', data => {
       try {
         const joystickData = JSON.parse(data.toString());
-        document.getElementById('joystickData').innerText =
-          `X: ${joystickData.x}, Y: ${joystickData.y}, Z: ${joystickData.z}, LB: ${joystickData.lb}, RB: ${joystickData.rb}`;
+        const displayText = `X축: ${joystickData.x}
+        Y축: ${joystickData.y}
+        Z축: ${joystickData.z}
+        잡기(LB): ${joystickData.lb}
+        놓기(RB): ${joystickData.rb}`;
+        document.getElementById('joystickData').innerText = displayText;
         console.log("PC2: 수신 데이터:", joystickData);
       } catch (err) {
         console.error("PC2: 데이터 파싱 오류:", err);
       }
     });
     
-    // 화면 캡처: getDisplayMedia로 PC2의 화면 (예: Gazebo 시뮬레이션 화면) 캡처
+    // 화면 캡처: getDisplayMedia로 PC2의 화면(예: Gazebo 시뮬레이션 화면) 캡처
     navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
       .then(stream => {
         console.log("PC2: 화면 스트림 캡처 성공");
