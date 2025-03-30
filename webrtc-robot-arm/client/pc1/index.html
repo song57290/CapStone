@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -53,6 +53,78 @@
     ws.onclose = () => {
       document.getElementById('data').innerText = '연결 종료됨';
     };
+  </script>
+</body>
+</html> -->
+
+
+
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>PC1 - 조이스틱 데이터 전송 및 영상 수신</title>
+  <style>
+    #status { font-weight: bold; margin-bottom: 10px; }
+    video { width: 640px; height: 480px; background: black; }
+  </style>
+</head>
+<body>
+  <h1>PC1: 조이스틱 데이터 전송 및 영상 수신</h1>
+  <div id="status">연결 대기중...</div>
+  <video id="remoteVideo" autoplay playsinline></video>
+  
+  <!-- simple-peer와 socket.io 라이브러리 -->
+  <script src="https://unpkg.com/simple-peer/simplepeer.min.js"></script>
+  <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+  <script>
+    // 시그널링 서버 주소 (실제 서버 주소와 포트로 수정)
+    const signalingServer = 'http://your-signaling-server-address:3002';
+    const socket = io(signalingServer);
+
+    // initiator 역할로 peer 생성
+    const peer = new SimplePeer({ initiator: true, trickle: false });
+
+    peer.on('signal', data => {
+      socket.emit('signal', data);
+    });
+
+    socket.on('signal', data => {
+      peer.signal(data);
+    });
+
+    peer.on('connect', () => {
+      document.getElementById('status').innerText = 'PC2와 연결됨';
+    });
+
+    // PC2에서 전송되는 영상 스트림을 수신하여 video 요소에 할당
+    peer.on('stream', stream => {
+      const videoElem = document.getElementById('remoteVideo');
+      videoElem.srcObject = stream;
+      videoElem.play();
+    });
+
+    // 조이스틱 데이터를 데이터 채널을 통해 PC2로 전송하는 함수
+    function sendJoystickData(data) {
+      if (peer.connected) {
+        peer.send(JSON.stringify(data));
+      }
+    }
+
+    // 테스트용: 매 1초마다 임의의 조이스틱 데이터 전송 (실제 환경에서는 로컬 서버에서 수신한 데이터를 사용)
+    setInterval(() => {
+      const testData = {
+        x: (Math.random() * 2 - 1).toFixed(2),
+        y: (Math.random() * 2 - 1).toFixed(2),
+        z: (Math.random() * 2 - 1).toFixed(2),
+        lb: Math.random() > 0.5 ? 1 : 0,
+        rb: Math.random() > 0.5 ? 1 : 0
+      };
+      sendJoystickData(testData);
+    }, 1000);
+
+    // → 실제 조이스틱 데이터 수신은 기존 로컬 서버(WebSocket 등)와 연동하여 onJoystickData(data) 호출 등으로 처리하면 됨.
   </script>
 </body>
 </html>
