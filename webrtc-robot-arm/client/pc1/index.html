@@ -2,26 +2,30 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>PC1 - 조이스틱 데이터 전송 및 영상 수신</title>
+  <title>PC1 - 실제 조이스틱 데이터 전송 및 영상 수신</title>
   <style>
     #status { font-weight: bold; margin-bottom: 10px; }
     #outgoingData { font-size: 1.2em; margin-bottom: 10px; }
     video { width: 640px; height: 480px; background: #000; }
-    button { font-size: 1em; padding: 10px; }
+    button { font-size: 1em; padding: 10px; margin-right: 10px; }
   </style>
 </head>
 <body>
-  <h1>PC1: 조이스틱 데이터 전송 및 영상 수신</h1>
+  <h1>PC1: 실제 조이스틱 데이터 전송 및 영상 수신</h1>
   <div id="status">연결 대기중...</div>
+  <!-- 전송되는 조이스틱 데이터 표시 -->
   <div id="outgoingData">전송 데이터 없음</div>
   <video id="remoteVideo" playsinline></video>
   <br>
-  <!-- 사용자 상호작용을 위한 재생 버튼 -->
   <button id="playButton">재생 시작</button>
+  <button id="pauseButton">재생 중단</button>
   
+  <!-- 라이브러리 로드 -->
   <script src="https://unpkg.com/simple-peer/simplepeer.min.js"></script>
   <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+  
   <script>
+    // 시그널링 서버 URL (Railway)
     const signalingServer = 'https://sincere-kindness-production.up.railway.app';
     const socket = io(signalingServer, { transports: ['websocket'] });
     
@@ -33,12 +37,11 @@
       console.error("PC1: Socket connection error:", error);
     });
     
+    // PC1는 initiator – 데이터를 전송하는 쪽
     const peer = new SimplePeer({
       initiator: true,
       trickle: false,
-      config: {
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-      }
+      config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
     });
     
     peer.on('signal', data => {
@@ -60,45 +63,59 @@
       console.log("PC1: Peer 연결 성공");
     });
     
-    // MediaStream 수신: 각 트랙을 모아 하나의 MediaStream으로 구성
+    // MediaStream 수신: 'track' 이벤트로 수신된 각 트랙을 모아 하나의 MediaStream 구성
     const remoteStream = new MediaStream();
     const remoteVideo = document.getElementById('remoteVideo');
     peer.on('track', (track, stream) => {
       console.log("PC1: Received track:", track.kind);
       remoteStream.addTrack(track);
       remoteVideo.srcObject = remoteStream;
-      // video.play()는 사용자의 클릭 이벤트 후 호출하도록 조정 (아래 버튼 이벤트 참조)
     });
     
-    // 조이스틱 데이터 전송 및 화면 표시 함수
-    function sendJoystickData(data) {
-      const displayText = `X축: ${data.x}, Y축: ${data.y}, Z축: ${data.z}, 잡기(LB): ${data.lb}, 놓기(RB): ${data.rb}`;
-      document.getElementById('outgoingData').innerText = displayText;
-      if (peer.connected) {
-        peer.send(JSON.stringify(data));
-      } else {
-        console.warn("PC1: Peer not connected yet.");
+    // 실제 조이스틱 데이터를 Gamepad API로 읽어 전송하는 함수
+    function updateGamepad() {
+      const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+      if (gamepads[0]) {
+        const gp = gamepads[0];
+        const data = {
+          x: gp.axes[0].toFixed(2),
+          y: -gp.axes[1].toFixed(2),
+          z: gp.axes[3] ? -gp.axes[3].toFixed(2) : "0.00",
+          lb: gp.buttons[4] && gp.buttons[4].pressed ? 1 : 0,
+          rb: gp.buttons[5] && gp.buttons[5].pressed ? 1 : 0
+        };
+        const displayText = `X축: ${data.x}
+        Y축: ${data.y}
+        Z축: ${data.z}
+        잡기(LB): ${data.lb}
+        놓기(RB): ${data.rb}`;
+        document.getElementById('outgoingData').innerText = displayText;
+        if (peer.connected) {
+          peer.send(JSON.stringify(data));
+        }
       }
+      requestAnimationFrame(updateGamepad);
     }
     
-    // 테스트용: 1초마다 임의의 조이스틱 데이터 전송
-    setInterval(() => {
-      const testData = {
-        x: (Math.random() * 2 - 1).toFixed(2),
-        y: (Math.random() * 2 - 1).toFixed(2),
-        z: (Math.random() * 2 - 1).toFixed(2),
-        lb: Math.random() > 0.5 ? 1 : 0,
-        rb: Math.random() > 0.5 ? 1 : 0
-      };
-      console.log("PC1: 전송 데이터:", testData);
-      sendJoystickData(testData);
-    }, 1000);
+    window.addEventListener("gamepadconnected", function(e) {
+      console.log("Gamepad connected at index %d: %s.", e.gamepad.index, e.gamepad.id);
+      updateGamepad();
+    });
     
-    // 사용자가 버튼을 클릭하면 비디오 재생을 시작합니다.
+    window.addEventListener("gamepaddisconnected", function(e) {
+      console.log("Gamepad disconnected from index %d: %s", e.gamepad.index, e.gamepad.id);
+    });
+    
+    // 재생 및 일시정지 버튼 이벤트
     document.getElementById('playButton').addEventListener('click', () => {
       remoteVideo.play().catch(err => {
         console.error("PC1: Video play error:", err);
       });
+    });
+    
+    document.getElementById('pauseButton').addEventListener('click', () => {
+      remoteVideo.pause();
+      console.log("PC1: Video paused");
     });
   </script>
 </body>

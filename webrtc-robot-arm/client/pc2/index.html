@@ -12,10 +12,10 @@
 <body>
   <h1>PC2: 조이스틱 데이터 수신 및 화면 송출</h1>
   <div id="status">연결 대기중...</div>
+  <!-- 수신된 조이스틱 데이터 표시 -->
   <div id="joystickData">수신 데이터 없음</div>
   <video id="localVideo" autoplay playsinline muted></video>
   
-  <!-- 라이브러리 로드 -->
   <script src="https://unpkg.com/simple-peer/simplepeer.min.js"></script>
   <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
   <script>
@@ -33,9 +33,7 @@
     const peer = new SimplePeer({
       initiator: false,
       trickle: false,
-      config: {
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-      }
+      config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
     });
     
     peer.on('signal', data => {
@@ -61,7 +59,11 @@
     peer.on('data', data => {
       try {
         const joystickData = JSON.parse(data.toString());
-        const displayText = `X축: ${joystickData.x}, Y축: ${joystickData.y}, Z축: ${joystickData.z}, 잡기(LB): ${joystickData.lb}, 놓기(RB): ${joystickData.rb}`;
+        const displayText = `X축: ${joystickData.x}
+        Y축: ${joystickData.y}
+        Z축: ${joystickData.z}
+        잡기(LB): ${joystickData.lb}
+        놓기(RB): ${joystickData.rb}`;
         document.getElementById('joystickData').innerText = displayText;
         console.log("PC2: 수신 데이터:", joystickData);
       } catch (err) {
@@ -69,7 +71,7 @@
       }
     });
     
-    // 화면 캡처: getDisplayMedia를 사용하여 PC2의 화면(예: Gazebo 시뮬레이션 화면)을 캡처하고, 각 트랙을 추가
+    // 화면 캡처: getDisplayMedia를 사용하여 PC2의 화면(예: Gazebo 시뮬레이션 화면)을 캡처
     navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
       .then(stream => {
         console.log("PC2: 화면 스트림 캡처 성공");
