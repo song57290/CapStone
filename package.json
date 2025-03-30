@@ -17,5 +17,8 @@
   "bugs": {
     "url": "https://github.com/song57290/CapStone/issues"
   },
-  "homepage": "https://github.com/song57290/CapStone#readme"
+  "homepage": "https://github.com/song57290/CapStone#readme",
+  "dependencies": {
+    "ws": "^8.18.1"
+  }
 }
