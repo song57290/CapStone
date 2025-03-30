@@ -8,6 +8,8 @@
 
 3/30 21:30 PC1과 재생과 중단버튼 생성 및 조이스틱 실시간 값 받는것에 성공
 
+3/30 22:05 로컬과 로컬 끼리 통신 성공
+
 https://sincere-kindness-production.up.railway.app/
 위 사이트는 시그널링 서버주소
 https://railway.com/project/7e029104-22b4-4bdd-baa2-ecd271c88206?environmentId=00d64810-9316-4fc1-965a-8830ab73e8fb

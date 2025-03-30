@@ -6,7 +6,9 @@
   <style>
     #status { font-weight: bold; margin-bottom: 10px; }
     #joystickData { font-size: 1.2em; margin-bottom: 10px; }
-    video { width: 640px; height: 480px; background: #000; }
+    /* 기본 영상 크기를 1280x720로 설정 */
+    video { width: 1280px; height: 720px; background: #000; }
+    button, input { font-size: 1em; padding: 5px; margin: 5px; }
   </style>
 </head>
 <body>
@@ -14,11 +16,24 @@
   <div id="status">연결 대기중...</div>
   <!-- 수신된 조이스틱 데이터 표시 -->
   <div id="joystickData">수신 데이터 없음</div>
+  <!-- PC2의 캡처 화면을 보여주는 비디오 -->
   <video id="localVideo" autoplay playsinline muted></video>
+  <br>
+  <!-- 영상 크기를 조절하는 UI -->
+  <div>
+    <label for="videoWidth">Width:</label>
+    <input type="number" id="videoWidth" value="1280">
+    <label for="videoHeight">Height:</label>
+    <input type="number" id="videoHeight" value="720">
+    <button id="updateSize">Update Video Size</button>
+  </div>
   
+  <!-- 라이브러리 로드 -->
   <script src="https://unpkg.com/simple-peer/simplepeer.min.js"></script>
   <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+  
   <script>
+    // 시그널링 서버 URL (Railway)
     const signalingServer = 'https://sincere-kindness-production.up.railway.app';
     const socket = io(signalingServer, { transports: ['websocket'] });
     
@@ -30,6 +45,7 @@
       console.error("PC2: Socket connection error:", error);
     });
     
+    // PC2는 non-initiator – 데이터를 수신하고, 화면 송출
     const peer = new SimplePeer({
       initiator: false,
       trickle: false,
@@ -59,11 +75,7 @@
     peer.on('data', data => {
       try {
         const joystickData = JSON.parse(data.toString());
-        const displayText = `X축: ${joystickData.x}
-        Y축: ${joystickData.y}
-        Z축: ${joystickData.z}
-        잡기(LB): ${joystickData.lb}
-        놓기(RB): ${joystickData.rb}`;
+        const displayText = `X축: ${joystickData.x}, Y축: ${joystickData.y}, Z축: ${joystickData.z}, 잡기(LB): ${joystickData.lb}, 놓기(RB): ${joystickData.rb}`;
         document.getElementById('joystickData').innerText = displayText;
         console.log("PC2: 수신 데이터:", joystickData);
       } catch (err) {
@@ -71,14 +83,17 @@
       }
     });
     
-    // 화면 캡처: getDisplayMedia를 사용하여 PC2의 화면(예: Gazebo 시뮬레이션 화면)을 캡처
-    navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
+    // 화면 캡처: getDisplayMedia를 사용하여 PC2의 화면(예: Gazebo 시뮬레이션 화면)을 캡처하고,
+    // 각 트랙을 개별적으로 추가하여 PC1으로 전송
+    navigator.mediaDevices.getDisplayMedia({ 
+      video: { width: { ideal: 1280 }, height: { ideal: 720 } }, 
+      audio: false 
+    })
       .then(stream => {
         console.log("PC2: 화면 스트림 캡처 성공");
         const videoElem = document.getElementById('localVideo');
         videoElem.srcObject = stream;
         videoElem.play();
-        // 각 트랙을 개별적으로 추가
         stream.getTracks().forEach(track => {
           peer.addTrack(track, stream);
         });
@@ -86,6 +101,16 @@
       .catch(err => {
         console.error("PC2: 화면 캡처 오류:", err);
       });
+    
+    // 영상 크기 조절 UI 이벤트 (PC2측)
+    document.getElementById('updateSize').addEventListener('click', () => {
+      const width = document.getElementById('videoWidth').value;
+      const height = document.getElementById('videoHeight').value;
+      const videoElem = document.getElementById('localVideo');
+      videoElem.style.width = width + 'px';
+      videoElem.style.height = height + 'px';
+      console.log(`PC2: Video size updated to ${width}x${height}`);
+    });
   </script>
 </body>
 </html>

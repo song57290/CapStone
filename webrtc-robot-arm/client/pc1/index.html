@@ -6,8 +6,9 @@
   <style>
     #status { font-weight: bold; margin-bottom: 10px; }
     #outgoingData { font-size: 1.2em; margin-bottom: 10px; }
-    video { width: 640px; height: 480px; background: #000; }
-    button { font-size: 1em; padding: 10px; margin-right: 10px; }
+    /* 기본 영상 크기는 원하는 대로 지정 (예: 1280x720) */
+    video { width: 1280px; height: 720px; background: #000; }
+    button, input { font-size: 1em; padding: 5px; margin: 5px; }
   </style>
 </head>
 <body>
@@ -15,10 +16,21 @@
   <div id="status">연결 대기중...</div>
   <!-- 전송되는 조이스틱 데이터 표시 -->
   <div id="outgoingData">전송 데이터 없음</div>
-  <video id="remoteVideo" playsinline></video>
+  <!-- muted 속성을 추가하여 자동 재생 허용 -->
+  <video id="remoteVideo" autoplay playsinline muted></video>
   <br>
+  <!-- 재생 및 일시정지 버튼 (추가 UI) -->
   <button id="playButton">재생 시작</button>
   <button id="pauseButton">재생 중단</button>
+  <br>
+  <!-- 영상 크기를 조절하는 UI -->
+  <div>
+    <label for="videoWidth">Width:</label>
+    <input type="number" id="videoWidth" value="1280">
+    <label for="videoHeight">Height:</label>
+    <input type="number" id="videoHeight" value="720">
+    <button id="updateSize">Update Video Size</button>
+  </div>
   
   <!-- 라이브러리 로드 -->
   <script src="https://unpkg.com/simple-peer/simplepeer.min.js"></script>
@@ -41,7 +53,9 @@
     const peer = new SimplePeer({
       initiator: true,
       trickle: false,
-      config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+      config: {
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      }
     });
     
     peer.on('signal', data => {
@@ -63,32 +77,30 @@
       console.log("PC1: Peer 연결 성공");
     });
     
-    // MediaStream 수신: 'track' 이벤트로 수신된 각 트랙을 모아 하나의 MediaStream 구성
+    // 'track' 이벤트로 수신된 각 트랙을 모아 하나의 MediaStream으로 구성
     const remoteStream = new MediaStream();
     const remoteVideo = document.getElementById('remoteVideo');
     peer.on('track', (track, stream) => {
       console.log("PC1: Received track:", track.kind);
       remoteStream.addTrack(track);
       remoteVideo.srcObject = remoteStream;
+      // 자동 재생을 위해 muted 속성이 있으므로 play()를 별도 호출할 필요가 없습니다.
     });
     
-    // 실제 조이스틱 데이터를 Gamepad API로 읽어 전송하는 함수
+    // 실제 조이스패드 데이터를 Gamepad API로 읽어 전송하는 함수
     function updateGamepad() {
       const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
       if (gamepads[0]) {
         const gp = gamepads[0];
         const data = {
           x: gp.axes[0].toFixed(2),
-          y: -gp.axes[1].toFixed(2),
-          z: gp.axes[3] ? -gp.axes[3].toFixed(2) : "0.00",
+          y: gp.axes[1].toFixed(2),
+          // 오른쪽 스틱의 세로 값을 사용하고 부호 반전 (위로 올리면 양수)
+          z: gp.axes[3] ? (-gp.axes[3]).toFixed(2) : "0.00",
           lb: gp.buttons[4] && gp.buttons[4].pressed ? 1 : 0,
           rb: gp.buttons[5] && gp.buttons[5].pressed ? 1 : 0
         };
-        const displayText = `X축: ${data.x}
-        Y축: ${data.y}
-        Z축: ${data.z}
-        잡기(LB): ${data.lb}
-        놓기(RB): ${data.rb}`;
+        const displayText = `X축: ${data.x}, Y축: ${data.y}, Z축: ${data.z}, 잡기(LB): ${data.lb}, 놓기(RB): ${data.rb}`;
         document.getElementById('outgoingData').innerText = displayText;
         if (peer.connected) {
           peer.send(JSON.stringify(data));
@@ -106,7 +118,7 @@
       console.log("Gamepad disconnected from index %d: %s", e.gamepad.index, e.gamepad.id);
     });
     
-    // 재생 및 일시정지 버튼 이벤트
+    // 재생 및 일시정지 버튼 이벤트 핸들러
     document.getElementById('playButton').addEventListener('click', () => {
       remoteVideo.play().catch(err => {
         console.error("PC1: Video play error:", err);
@@ -116,6 +128,15 @@
     document.getElementById('pauseButton').addEventListener('click', () => {
       remoteVideo.pause();
       console.log("PC1: Video paused");
+    });
+    
+    // 영상 크기 조절 UI 이벤트
+    document.getElementById('updateSize').addEventListener('click', () => {
+      const width = document.getElementById('videoWidth').value;
+      const height = document.getElementById('videoHeight').value;
+      remoteVideo.style.width = width + 'px';
+      remoteVideo.style.height = height + 'px';
+      console.log(`PC1: Video size updated to ${width}x${height}`);
     });
   </script>
 </body>
