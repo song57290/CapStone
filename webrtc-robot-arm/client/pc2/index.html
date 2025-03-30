@@ -20,7 +20,7 @@
   <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
   <script>
     // 시그널링 서버 주소 (실제 주소와 포트로 수정)
-    const signalingServer = 'http://your-signaling-server-address:3002';
+    const signalingServer = 'http://192.168.35.25:3002';
     const socket = io(signalingServer);
 
     // non-initiator 역할로 peer 생성
@@ -50,19 +50,16 @@
       }
     });
 
-    // 영상 스트림 전송: 테스트용으로 getUserMedia를 사용 (실제 환경에서는 Gazebo 화면 캡처 필요)
-    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-      .then(stream => {
-        // PC2 로컬 화면에 표시 (선택 사항)
-        const videoElem = document.getElementById('localVideo');
-        videoElem.srcObject = stream;
-        videoElem.play();
-        // PC1으로 영상 스트림 전송
-        peer.addStream(stream);
-      })
-      .catch(err => {
-        console.error('비디오 스트림 캡처 오류:', err);
-      });
+    navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
+  .then(stream => {
+    const videoElem = document.getElementById('localVideo');
+    videoElem.srcObject = stream;
+    videoElem.play();
+    peer.addStream(stream);
+  })
+  .catch(err => {
+    console.error('화면 캡처 오류:', err);
+  });
   </script>
 </body>
 </html>
