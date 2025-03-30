@@ -21,7 +21,7 @@
   <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
   
   <script>
-    // Railway에서 발급받은 시그널링 서버 URL (HTTPS 환경)
+    // Railway에서 발급받은 시그널링 서버 URL (HTTPS)
     const signalingServer = 'https://sincere-kindness-production.up.railway.app';
     const socket = io(signalingServer, { transports: ['websocket'] });
     
@@ -61,21 +61,19 @@
       console.log("PC1: Peer 연결 성공");
     });
     
-    peer.on('stream', stream => {
-      console.log("PC1: Received remote stream");
-      const videoElem = document.getElementById('remoteVideo');
-      videoElem.srcObject = stream;
-      videoElem.play();
+    // PC1은 'track' 이벤트를 통해 PC2로부터 전달받은 스트림을 video 요소에 할당
+    const remoteVideo = document.getElementById('remoteVideo');
+    peer.on('track', (track, stream) => {
+      if (!remoteVideo.srcObject) {
+        remoteVideo.srcObject = stream;
+        remoteVideo.play();
+        console.log("PC1: Remote stream received");
+      }
     });
     
-    // 조이스틱 데이터를 데이터 채널로 전송하고 화면에 표시하는 함수
+    // 조이스틱 데이터를 전송하고, 화면에 표시하는 함수
     function sendJoystickData(data) {
-      // 업데이트할 문자열 생성 (소수점 두 자리로 고정)
-      const displayText = `X축: ${data.x}
-      Y축: ${data.y}
-      Z축: ${data.z}
-      잡기(LB): ${data.lb}
-      놓기(RB): ${data.rb}`;
+      const displayText = `X축: ${data.x}, Y축: ${data.y}, Z축: ${data.z}, 잡기(LB): ${data.lb}, 놓기(RB): ${data.rb}`;
       document.getElementById('outgoingData').innerText = displayText;
       
       if (peer.connected) {
@@ -85,7 +83,7 @@
       }
     }
     
-    // 테스트용: 1초마다 임의의 조이스틱 데이터 전송
+    // 테스트용: 1초마다 임의의 조이스틱 데이터 전송 (실제 데이터 연동 시 교체)
     setInterval(() => {
       const testData = {
         x: (Math.random() * 2 - 1).toFixed(2),

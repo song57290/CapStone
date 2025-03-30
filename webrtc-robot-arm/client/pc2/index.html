@@ -65,11 +65,7 @@
     peer.on('data', data => {
       try {
         const joystickData = JSON.parse(data.toString());
-        const displayText = `X축: ${joystickData.x}
-        Y축: ${joystickData.y}
-        Z축: ${joystickData.z}
-        잡기(LB): ${joystickData.lb}
-        놓기(RB): ${joystickData.rb}`;
+        const displayText = `X축: ${joystickData.x}, Y축: ${joystickData.y}, Z축: ${joystickData.z}, 잡기(LB): ${joystickData.lb}, 놓기(RB): ${joystickData.rb}`;
         document.getElementById('joystickData').innerText = displayText;
         console.log("PC2: 수신 데이터:", joystickData);
       } catch (err) {
@@ -77,15 +73,17 @@
       }
     });
     
-    // 화면 캡처: getDisplayMedia로 PC2의 화면(예: Gazebo 시뮬레이션 화면) 캡처
+    // 화면 캡처: getDisplayMedia로 PC2의 화면(예: Gazebo 시뮬레이션 화면)을 캡처하고, 개별 트랙 단위로 추가
     navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
       .then(stream => {
         console.log("PC2: 화면 스트림 캡처 성공");
         const videoElem = document.getElementById('localVideo');
         videoElem.srcObject = stream;
         videoElem.play();
-        // 캡처한 스트림을 PC1으로 전송
-        peer.addStream(stream);
+        // 각 트랙을 개별적으로 추가
+        stream.getTracks().forEach(track => {
+          peer.addTrack(track, stream);
+        });
       })
       .catch(err => {
         console.error("PC2: 화면 캡처 오류:", err);
