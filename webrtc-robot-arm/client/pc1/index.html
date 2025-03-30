@@ -5,7 +5,7 @@
   <title>PC1 - 조이스틱 데이터 전송 및 영상 수신</title>
   <style>
     #status { font-weight: bold; margin-bottom: 10px; }
-    video { width: 640px; height: 480px; background: black; }
+    video { width: 640px; height: 480px; background: #000; }
   </style>
 </head>
 <body>
@@ -13,56 +13,70 @@
   <div id="status">연결 대기중...</div>
   <video id="remoteVideo" autoplay playsinline></video>
   
-  <!-- simple-peer와 socket.io 라이브러리 -->
+  <!-- 라이브러리 로드 -->
   <script src="https://unpkg.com/simple-peer/simplepeer.min.js"></script>
   <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+  
   <script>
-    // Railway에서 발급받은 시그널링 서버 URL로 수정합니다.
-    const signalingServer = 'https://my-signaling-server.up.railway.app';
-    const socket = io(signalingServer);
-
-    // initiator 역할로 피어 생성 (PC1이 데이터를 전송하므로 initiator)
+    // Railway에서 발급받은 시그널링 서버 URL (HTTPS 환경)
+    const signalingServer = 'https://sincere-kindness-production.up.railway.app';
+    
+    // transports 옵션을 명시하여 WebSocket 사용
+    const socket = io(signalingServer, { transports: ['websocket'] });
+    
+    socket.on("connect", () => {
+      console.log("PC1: Socket connected, ID:", socket.id);
+    });
+    
+    socket.on("connect_error", (error) => {
+      console.error("PC1: Socket connection error:", error);
+    });
+    
+    // PC1은 initiator 역할 – 데이터를 전송하는 쪽
     const peer = new SimplePeer({
       initiator: true,
       trickle: false,
       config: {
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' }
-        ]
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
       }
     });
-
-    // 시그널 이벤트 처리: SDP와 ICE 후보 정보를 시그널링 서버로 전송
+    
     peer.on('signal', data => {
-      console.log('PC1 signal:', data);
+      console.log("PC1: Peer signal generated:", data);
       socket.emit('signal', data);
     });
-
-    // 시그널링 서버로부터 받은 데이터를 피어에 전달
+    
     socket.on('signal', data => {
-      console.log('PC1 received signal:', data);
-      peer.signal(data);
+      console.log("PC1: Received signal:", data);
+      try {
+        peer.signal(data);
+      } catch (e) {
+        console.error("PC1: Error processing signal:", e);
+      }
     });
-
+    
     peer.on('connect', () => {
       document.getElementById('status').innerText = 'PC2와 연결됨';
+      console.log("PC1: Peer 연결 성공");
     });
-
-    // PC2에서 전송되는 영상 스트림을 수신하여 video 요소에 할당
+    
     peer.on('stream', stream => {
+      console.log("PC1: Received remote stream");
       const videoElem = document.getElementById('remoteVideo');
       videoElem.srcObject = stream;
       videoElem.play();
     });
-
-    // 조이스틱 데이터를 데이터 채널로 전송하는 함수
+    
+    // 조이스틱 데이터 전송 함수 (연결이 완료되면 전송)
     function sendJoystickData(data) {
       if (peer.connected) {
         peer.send(JSON.stringify(data));
+      } else {
+        console.warn("PC1: Peer not connected yet.");
       }
     }
-
-    // 테스트용: 1초마다 임의의 조이스틱 데이터 전송 (실제 로컬 서버 연동 시 변경)
+    
+    // 테스트용 임의 데이터 전송 (1초마다)
     setInterval(() => {
       const testData = {
         x: (Math.random() * 2 - 1).toFixed(2),
@@ -71,7 +85,7 @@
         lb: Math.random() > 0.5 ? 1 : 0,
         rb: Math.random() > 0.5 ? 1 : 0
       };
-      console.log("PC1 전송 데이터:", testData);
+      console.log("PC1: 전송 데이터:", testData);
       sendJoystickData(testData);
     }, 1000);
   </script>
