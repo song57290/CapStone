@@ -7,21 +7,21 @@
     #status { font-weight: bold; margin-bottom: 10px; }
     #outgoingData { font-size: 1.2em; margin-bottom: 10px; }
     video { width: 640px; height: 480px; background: #000; }
+    button { font-size: 1em; padding: 10px; }
   </style>
 </head>
 <body>
   <h1>PC1: 조이스틱 데이터 전송 및 영상 수신</h1>
   <div id="status">연결 대기중...</div>
-  <!-- 전송되는 조이스틱 데이터 표시 -->
   <div id="outgoingData">전송 데이터 없음</div>
-  <video id="remoteVideo" autoplay playsinline></video>
+  <video id="remoteVideo" playsinline></video>
+  <br>
+  <!-- 사용자 상호작용을 위한 재생 버튼 -->
+  <button id="playButton">재생 시작</button>
   
-  <!-- 라이브러리 로드 -->
   <script src="https://unpkg.com/simple-peer/simplepeer.min.js"></script>
   <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
-  
   <script>
-    // Railway에서 발급받은 시그널링 서버 URL (HTTPS)
     const signalingServer = 'https://sincere-kindness-production.up.railway.app';
     const socket = io(signalingServer, { transports: ['websocket'] });
     
@@ -33,7 +33,6 @@
       console.error("PC1: Socket connection error:", error);
     });
     
-    // PC1은 initiator 역할 – 데이터를 전송하는 쪽
     const peer = new SimplePeer({
       initiator: true,
       trickle: false,
@@ -61,21 +60,20 @@
       console.log("PC1: Peer 연결 성공");
     });
     
-    // PC1은 'track' 이벤트를 통해 PC2로부터 전달받은 스트림을 video 요소에 할당
+    // MediaStream 수신: 각 트랙을 모아 하나의 MediaStream으로 구성
+    const remoteStream = new MediaStream();
     const remoteVideo = document.getElementById('remoteVideo');
     peer.on('track', (track, stream) => {
-      if (!remoteVideo.srcObject) {
-        remoteVideo.srcObject = stream;
-        remoteVideo.play();
-        console.log("PC1: Remote stream received");
-      }
+      console.log("PC1: Received track:", track.kind);
+      remoteStream.addTrack(track);
+      remoteVideo.srcObject = remoteStream;
+      // video.play()는 사용자의 클릭 이벤트 후 호출하도록 조정 (아래 버튼 이벤트 참조)
     });
     
-    // 조이스틱 데이터를 전송하고, 화면에 표시하는 함수
+    // 조이스틱 데이터 전송 및 화면 표시 함수
     function sendJoystickData(data) {
       const displayText = `X축: ${data.x}, Y축: ${data.y}, Z축: ${data.z}, 잡기(LB): ${data.lb}, 놓기(RB): ${data.rb}`;
       document.getElementById('outgoingData').innerText = displayText;
-      
       if (peer.connected) {
         peer.send(JSON.stringify(data));
       } else {
@@ -83,7 +81,7 @@
       }
     }
     
-    // 테스트용: 1초마다 임의의 조이스틱 데이터 전송 (실제 데이터 연동 시 교체)
+    // 테스트용: 1초마다 임의의 조이스틱 데이터 전송
     setInterval(() => {
       const testData = {
         x: (Math.random() * 2 - 1).toFixed(2),
@@ -95,6 +93,13 @@
       console.log("PC1: 전송 데이터:", testData);
       sendJoystickData(testData);
     }, 1000);
+    
+    // 사용자가 버튼을 클릭하면 비디오 재생을 시작합니다.
+    document.getElementById('playButton').addEventListener('click', () => {
+      remoteVideo.play().catch(err => {
+        console.error("PC1: Video play error:", err);
+      });
+    });
   </script>
 </body>
 </html>

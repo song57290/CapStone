@@ -6,6 +6,8 @@ https://railway.com/project/7e029104-22b4-4bdd-baa2-ecd271c88206?environmentId=0
 
 3/30 19:58 PC1과 PC2 화면 연결 성공 데이터도 전송 o 대신 임의의 숫자가 넘어가는 중임
 
+3/30 21:01 PC1과 PC2 화면 연결 성공 (재생버튼을 누르면 동작)
+
 
 
 
