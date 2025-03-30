@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>PC2 - 조이스틱 데이터 수신 및 영상 송출</title>
+  <title>PC2 - 조이스틱 데이터 수신 및 화면 송출</title>
   <style>
     #status { font-weight: bold; margin-bottom: 10px; }
     #joystickData { margin-bottom: 10px; }
@@ -10,7 +10,7 @@
   </style>
 </head>
 <body>
-  <h1>PC2: 조이스틱 데이터 수신 및 영상 송출</h1>
+  <h1>PC2: 조이스틱 데이터 수신 및 화면 송출</h1>
   <div id="status">연결 대기중...</div>
   <div id="joystickData">수신 데이터 없음</div>
   <video id="localVideo" autoplay playsinline muted></video>
@@ -19,18 +19,30 @@
   <script src="https://unpkg.com/simple-peer/simplepeer.min.js"></script>
   <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
   <script>
-    // 시그널링 서버 주소 (실제 주소와 포트로 수정)
-    const signalingServer = 'http://192.168.35.25:3002';
+    // Railway에서 발급받은 시그널링 서버 URL로 수정합니다.
+    const signalingServer = 'https://my-signaling-server.up.railway.app';
     const socket = io(signalingServer);
 
-    // non-initiator 역할로 peer 생성
-    const peer = new SimplePeer({ initiator: false, trickle: false });
+    // non-initiator 역할로 피어 생성 (PC2는 데이터 수신 및 화면 송출)
+    const peer = new SimplePeer({
+      initiator: false,
+      trickle: false,
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' }
+        ]
+      }
+    });
 
+    // 시그널 이벤트 처리: SDP와 ICE 후보 정보를 시그널링 서버로 전송
     peer.on('signal', data => {
+      console.log('PC2 signal:', data);
       socket.emit('signal', data);
     });
 
+    // 시그널링 서버로부터 받은 데이터를 피어에 전달
     socket.on('signal', data => {
+      console.log('PC2 received signal:', data);
       peer.signal(data);
     });
 
@@ -44,22 +56,23 @@
         const joystickData = JSON.parse(data.toString());
         document.getElementById('joystickData').innerText =
           `X: ${joystickData.x}, Y: ${joystickData.y}, Z: ${joystickData.z}, LB: ${joystickData.lb}, RB: ${joystickData.rb}`;
-        // 실제로 ROS로 데이터를 전달하거나 Gazebo 제어 로직을 추가 가능
       } catch (err) {
-        console.error('데이터 파싱 오류:', err);
+        console.error('PC2 데이터 파싱 오류:', err);
       }
     });
 
+    // 화면 캡처: getDisplayMedia를 사용하여 PC2의 화면(예: Gazebo 시뮬레이션 화면)을 캡처
     navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
-  .then(stream => {
-    const videoElem = document.getElementById('localVideo');
-    videoElem.srcObject = stream;
-    videoElem.play();
-    peer.addStream(stream);
-  })
-  .catch(err => {
-    console.error('화면 캡처 오류:', err);
-  });
+      .then(stream => {
+        const videoElem = document.getElementById('localVideo');
+        videoElem.srcObject = stream;
+        videoElem.play();
+        // 캡처된 스트림을 PC1으로 전송
+        peer.addStream(stream);
+      })
+      .catch(err => {
+        console.error('PC2 화면 캡처 오류:', err);
+      });
   </script>
 </body>
 </html>
