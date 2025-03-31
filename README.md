@@ -12,6 +12,11 @@
 
 3/31 15:30 SimplePeer 라이브러리를 unpkg 대신 jsDelivr CDN으로 수정
 
+3/31 18:37
+> 우분투 내에서 통신 성공
+> PC1의 경우 연결 종료와 재연결 버튼 생성 완료
+> PC2의 경우 연결 종료 버튼 생성 완료
+
 
 https://sincere-kindness-production.up.railway.app/
 위 사이트는 시그널링 서버주소
