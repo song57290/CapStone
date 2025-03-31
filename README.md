@@ -10,6 +10,9 @@
 
 3/30 22:05 로컬과 로컬 끼리 통신 성공
 
+3/31 15:30 SimplePeer 라이브러리를 unpkg 대신 jsDelivr CDN으로 수정
+
+
 https://sincere-kindness-production.up.railway.app/
 위 사이트는 시그널링 서버주소
 https://railway.com/project/7e029104-22b4-4bdd-baa2-ecd271c88206?environmentId=00d64810-9316-4fc1-965a-8830ab73e8fb
