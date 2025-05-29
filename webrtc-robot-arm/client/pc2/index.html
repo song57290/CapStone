@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>PC2 - 조이스틱 데이터 수신 및 화면 송출</title>
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
     #status { font-weight: bold; margin-bottom: 10px; }
     #joystickData { font-size: 1.2em; margin-bottom: 10px; }
@@ -12,7 +13,7 @@
       background-color: red;
       color: white;
       border: none;
-      padding: 10px 20px;
+      padding: 10px 10px;
       cursor: pointer;
       vertical-align: middle;
     }
@@ -21,16 +22,16 @@
 <body>
   <h1>
     PC2: 조이스틱 데이터 수신 및 화면 송출
-    <button id="disconnectButton" class="disconnect-btn">연결 종료</button>
+    <button id="disconnectButton" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white text-sm">연결 종료</button>
   </h1>
-  <div id="status">연결 대기중...</div>
-  <div id="joystickData">수신 데이터 없음</div>
+  <div id="status" class="font-semibold text-lg text-green-700">연결 대기중...</div>
+  <div id="joystickData" class="font-semibold text-lg text-blue-700">데이터 없음 </div>
   <video id="localVideo" autoplay playsinline muted></video>
   <br>
   <div>
-    <label for="videoWidth">Width:</label>
+    <label for="videoWidth" class="font-semibold text-lg text-balck-1000"> Width:</label>
     <input type="number" id="videoWidth" value="1280">
-    <label for="videoHeight">Height:</label>
+    <label for="videoHeight"class="font-semibold text-lg text-balck-1000"> Height:</label>
     <input type="number" id="videoHeight" value="720">
     <button id="updateSize">Update Video Size</button>
   </div>
@@ -170,5 +171,5 @@
     });
   </script>
 </body>
+<script src="publish.js"></script>
 </html>
-
