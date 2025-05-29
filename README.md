@@ -40,3 +40,7 @@ bash
 cd ~/CapStone/webrtc-robot-arm/client/pc2
 npx http-server -p 3001
 브라우저에서 http://127.0.0.1:3001 (또는 PC2의 실제 IP와 포트)로 접속하세요.
+
+
+5/30
+railway의 만료롤 새로운 방안인 Render로 시도중
