@@ -1,223 +1,210 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <title>PC2 - 조이스틱 데이터 수신 및 화면 송출</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- ROSLIBJS 추가 -->
-  <script src="https://cdn.jsdelivr.net/gh/RobotWebTools/roslibjs/build/roslib.min.js"></script>
+<meta charset="UTF-8" />
+<title>PC2 - 조이스틱 데이터 수신 및 화면 송출</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/gh/RobotWebTools/roslibjs/build/roslib.min.js"></script>
 </head>
 
 <body>
-  <!-- 상단바 -->
-  <header class="flex items-center justify-between p-4 bg-blue-800 text-white">
-    <div class="flex items-center gap-4">
-      <img src="https://blog.kakaocdn.net/dn/71hSN/btsJTBBLxY4/JjQxPDPxp1BZhDPm9u0bEK/img.gif" alt="로고 이미지" class="h-14 w-auto rounded-full">
-      <h1 class="text-xl font-bold whitespace-nowrap">PC2: 조이스틱 데이터 수신 및 화면 송출</h1>
+<header class="flex items-center justify-between p-4 bg-blue-800 text-white">
+  <div class="flex items-center gap-4">
+    <img src="https://blog.kakaocdn.net/dn/71hSN/btsJTBBLxY4/JjQxPDPxp1BZhDPm9u0bEK/img.gif"
+         alt="로고 이미지" class="h-14 w-auto rounded-full">
+    <h1 class="text-xl font-bold whitespace-nowrap">PC2: 조이스틱 데이터 수신 및 화면 송출</h1>
+  </div>
+  <div class="flex gap-2">
+    <button id="reconnectButton" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">재연결</button>
+    <button id="disconnectButton" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">연결 종료</button>
+  </div>
+</header>
+
+<main class="flex flex-col gap-4 p-4">
+  <section class="flex flex-col gap-2 rounded bg-white p-4 shadow">
+    <div id="status" class="text-lg font-semibold text-yellow-600">연결 대기중...</div>
+    <div id="joystickData" class="text-gray-700 text-center">수신 데이터 없음</div>
+  </section>
+
+  <section class="flex flex-col gap-4">
+    <video id="localVideo" autoplay playsinline muted class="h-auto w-full rounded bg-black shadow"></video>
+
+    <div class="flex flex-wrap items-center gap-2 rounded bg-white p-2 shadow">
+      <label for="videoWidth" class="text-sm">Width:</label>
+      <input type="number" id="videoWidth" value="1920" class="w-24 rounded border p-1 text-sm" />
+      <label for="videoHeight" class="text-sm">Height:</label>
+      <input type="number" id="videoHeight" value="1080" class="w-24 rounded border p-1 text-sm" />
+      <button id="updateSize" class="rounded bg-blue-600 px-2 py-1 text-sm text-white hover:bg-blue-700">사이즈 적용</button>
     </div>
-    <div class="flex gap-2">
-      <button id="reconnectButton" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">재연결</button>
-      <button id="disconnectButton" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">연결 종료</button>
-    </div>
-  </header>
+  </section>
+</main>
 
-  <main class="flex flex-col gap-4 p-4">
-    <section class="flex flex-col gap-2 rounded bg-white p-4 shadow">
-      <div id="status" class="text-lg font-semibold text-yellow-600">연결 대기중...</div>
-      <div id="joystickData" class="text-gray-700 text-center">수신 데이터 없음</div>
-    </section>
+<script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.0/simplepeer.min.js"></script>
+<script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
 
-    <section class="flex flex-col gap-4">
-      <video id="localVideo" autoplay playsinline muted class="h-auto w-full rounded bg-black shadow"></video>
+<script>
+const signalingServer = 'https://my-signaling-server-uo91.onrender.com';
+const socket = io(signalingServer, { transports: ['websocket'] });
+let peer = null;
+let localStream = null;
+const statusElem = document.getElementById('status');
 
-      <div class="flex flex-wrap items-center gap-2 rounded bg-white p-2 shadow">
-        <label for="videoWidth" class="text-sm">Width:</label>
-        <input type="number" id="videoWidth" value="1920" class="w-24 rounded border p-1 text-sm" />
-        <label for="videoHeight" class="text-sm">Height:</label>
-        <input type="number" id="videoHeight" value="1080" class="w-24 rounded border p-1 text-sm" />
-        <button id="updateSize" class="rounded bg-blue-600 px-2 py-1 text-sm text-white hover:bg-blue-700">사이즈 적용</button>
-      </div>
-    </section>
-  </main>
-
-  <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.0/simplepeer.min.js"></script>
-  <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
-
-  <script>
-    const signalingServer = 'https://my-signaling-server-uo91.onrender.com';
-    const socket = io(signalingServer, { transports: ['websocket'] });
-    let peer = null;
-    let localStream = null;
-    const statusElem = document.getElementById('status');
-
-    function cleanupStream() {
-      if (localStream) {
-        localStream.getTracks().forEach(track => track.stop());
-        localStream = null;
-      }
-      document.getElementById('localVideo').srcObject = null;
-    }
-
-    function initializePeer() {
-      if (peer && !peer.destroyed) {
-        peer.destroy();
-      }
-
-      peer = new SimplePeer({
-        initiator: false,
-        trickle: false,
-        config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
-      });
-
-      peer.on('signal', data => {
-        socket.emit('signal', data);
-      });
-
-      peer.on('connect', () => {
-        statusElem.innerText = 'PC1과 연결됨';
-        statusElem.classList.replace('text-yellow-600', 'text-green-600');
-        statusElem.classList.add('text-green-600');
-        startScreenShare();
-      });
-
-      peer.on('close', () => {
-       const statusElem = document.getElementById('status');
-       statusElem.innerText = '연결 끊어짐';
-       statusElem.classList.remove('text-yellow-600', 'text-green-600');
-       statusElem.classList.add('text-red-600');
-      console.log("PC1: Peer 연결 종료됨");
-      });
-
-
-      peer.on('error', err => {
-        if (err.message && err.message.includes("User-Initiated Abort")) {
-          console.log("의도한 연결 종료에 따른 에러 무시:", err.message);
-        } else {
-          console.error("Peer error:", err);
-        }
-      });
-
-      //조이스틱 데이터 수신
-      peer.on('data', data => {
-        try {
-          const joystickData = JSON.parse(data);
-          const x = joystickData.axes[0];
-          const y = joystickData.axes[1];
-          const z = joystickData.axes[3] || 0;
-          const A = joystickData.buttons[0] || 0;
-          const B = joystickData.buttons[1] || 0;
-          
-          document.getElementById('joystickData').innerHTML = `
-          <div class="flex flex-wrap justify-center gap-4 text-lg font-bold">
-          |<div class="flex items-center gap-1">
-          X축:
-          <span class="text-black w-10 inline-block text-center">${x}</span>
-           </div>|
-           <div class="flex items-center gap-1">
-          
-          Y축:
-          <span class="text-black w-10 inline-block text-center">${y}</span>
-          </div>|
-          <div class="flex items-center gap-1">
-          Z축:
-          <span class="text-black w-10 inline-block text-center">${z}</span>
-          </div>|
-          <div class="flex items-center gap-1">
-          A버튼:
-          <span class="text-black w-10 inline-block text-center">${A}</span>
-          </div>|
-          <div class="flex items-center gap-1">
-          B버튼:
-          <span class="text-black w-10 inline-block text-center">${B}</span>
-        </div>|
-      </div>
-    `;
-  } catch (e) {
-    console.error("PC2: 데이터 처리 오류:", e);
+function cleanupStream() {
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
   }
-});
+  document.getElementById('localVideo').srcObject = null;
+}
 
-    }
+function initializePeer() {
+  if (peer && !peer.destroyed) {
+    peer.destroy();
+  }
 
-    document.getElementById('disconnectButton').addEventListener('click', () => {
-      if (peer && !peer.destroyed) {
-      peer.destroy();
-    }
-    socket.emit('disconnectSignal', { from: 'PC2' });
+  peer = new SimplePeer({
+    initiator: false,
+    trickle: false,
+    config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+  });
 
-    // 연결 끊어짐 표시
+  peer.on('signal', data => {
+    socket.emit('signal', data);
+  });
+
+  peer.on('connect', () => {
+    statusElem.innerText = 'PC1과 연결됨';
+    statusElem.classList.remove('text-yellow-600', 'text-red-600');
+    statusElem.classList.add('text-green-600');
+    startScreenShare();
+  });
+
+  peer.on('close', () => {
     statusElem.innerText = '연결 끊어짐';
     statusElem.classList.remove('text-green-600', 'text-yellow-600');
     statusElem.classList.add('text-red-600');
+    cleanupStream();
 
-    // 3초 후 연결 대기중으로 상태 복원
+    // 3초 후 연결 대기중으로 변경
     setTimeout(() => {
       statusElem.innerText = '연결 대기중...';
       statusElem.classList.remove('text-red-600');
       statusElem.classList.add('text-yellow-600');
-    }, 3000); // 3초(3000ms) 후 복원
+    }, 3000);
   });
 
-    document.getElementById('reconnectButton').addEventListener('click', () => {
-      initializePeer();
-      statusElem.innerText = '연결 대기중...';
-      statusElem.classList.replace('text-red-600', 'text-yellow-600');
-      socket.emit('reconnectRequest', { from: 'PC2' });
-    });
+  peer.on('error', err => {
+    console.error("Peer error:", err);
+  });
 
-    function startScreenShare() {
-      navigator.mediaDevices.getDisplayMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false
-      })
-      .then(stream => {
-        cleanupStream();
-        localStream = stream;
-        const videoElem = document.getElementById('localVideo');
-        videoElem.srcObject = stream;
-        videoElem.play();
+  peer.on('data', data => {
+    try {
+      const joystickData = JSON.parse(data);
+      const x = joystickData.axes[0];
+      const y = joystickData.axes[1];
+      const z = joystickData.axes[3] || 0;
+      const A = joystickData.buttons[0] || 0;
+      const B = joystickData.buttons[1] || 0;
 
-        if (peer && !peer.destroyed) {
-          stream.getTracks().forEach(track => {
-            try {
-              peer.addTrack(track, stream);
-            } catch (err) {
-              console.error("트랙 추가 오류:", err);
-            }
-          });
-        }
-      })
-      .catch(err => console.error("화면 공유 오류:", err));
+      document.getElementById('joystickData').innerHTML = `
+        <div class="flex flex-wrap justify-center gap-4 text-lg font-bold">
+        |<div class="flex items-center gap-1">X축: <span class="text-black w-10 inline-block text-center">${x}</span></div>|
+        <div class="flex items-center gap-1">Y축: <span class="text-black w-10 inline-block text-center">${-y}</span></div>|
+        <div class="flex items-center gap-1">Z축: <span class="text-black w-10 inline-block text-center">${-z}</span></div>|
+        <div class="flex items-center gap-1">A버튼: <span class="text-black w-10 inline-block text-center">${A}</span></div>|
+        <div class="flex items-center gap-1">B버튼: <span class="text-black w-10 inline-block text-center">${B}</span></div>|
+        </div>
+      `;
+    } catch (e) {
+      console.error("PC2: 데이터 처리 오류:", e);
     }
+  });
+}
 
-    document.getElementById('updateSize').addEventListener('click', () => {
-      const w = document.getElementById('videoWidth').value;
-      const h = document.getElementById('videoHeight').value;
-      const v = document.getElementById('localVideo');
-      v.style.width = w + 'px';
-      v.style.height = h + 'px';
-    });
+document.getElementById('disconnectButton').addEventListener('click', () => {
+  if (peer && !peer.destroyed) {
+    peer.destroy();
+  }
+  socket.emit('disconnectSignal', { from: 'PC2' });
+});
 
+document.getElementById('reconnectButton').addEventListener('click', () => {
+  if (peer && !peer.destroyed) {
+    // "연결 끊어짐" 뜨지 않도록: close 이벤트 트리거 방지
+    peer.removeAllListeners();
+    peer.destroy();
+  }
+  // 바로 연결 대기중으로 전환
+  statusElem.innerText = '연결 대기중...';
+  statusElem.classList.remove('text-green-600', 'text-red-600');
+  statusElem.classList.add('text-yellow-600');
+
+  initializePeer();
+  socket.emit('reconnectRequest', { from: 'PC2' });
+});
+
+function startScreenShare() {
+  navigator.mediaDevices.getDisplayMedia({
+    video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+    audio: false
+  })
+  .then(stream => {
+    cleanupStream();
+    localStream = stream;
+    const videoElem = document.getElementById('localVideo');
+    videoElem.srcObject = stream;
+    videoElem.play();
+
+    if (peer && !peer.destroyed) {
+      stream.getTracks().forEach(track => {
+        try {
+          peer.addTrack(track, stream);
+        } catch (err) {
+          console.error("트랙 추가 오류:", err);
+        }
+      });
+    }
+  })
+  .catch(err => console.error("화면 공유 오류:", err));
+}
+
+document.getElementById('updateSize').addEventListener('click', () => {
+  const w = document.getElementById('videoWidth').value;
+  const h = document.getElementById('videoHeight').value;
+  const v = document.getElementById('localVideo');
+  v.style.width = w + 'px';
+  v.style.height = h + 'px';
+});
+
+initializePeer();
+
+socket.on('signal', data => {
+  try {
+    if (!peer || peer.destroyed) initializePeer();
+    peer.signal(data);
+  } catch (e) {
+    console.error("signal 처리 오류:", e);
+  }
+});
+
+socket.on('disconnectSignal', data => {
+  console.log("disconnectSignal 수신:", data);
+  if (peer && !peer.destroyed) {
+    peer.destroy();
+  }
+  // "연결 끊어짐" 및 3초 후 "연결 대기중..."으로 복구
+  statusElem.innerText = '연결 끊어짐';
+  statusElem.classList.remove('text-green-600', 'text-yellow-600');
+  statusElem.classList.add('text-red-600');
+  cleanupStream();
+
+  setTimeout(() => {
+    statusElem.innerText = '연결 대기중...';
+    statusElem.classList.remove('text-red-600');
+    statusElem.classList.add('text-yellow-600');
     initializePeer();
-
-    socket.on('signal', data => {
-      try {
-        if (!peer || peer.destroyed) initializePeer();
-        peer.signal(data);
-      } catch (e) {
-        console.error("signal 처리 오류:", e);
-      }
-    });
-
-    socket.on('disconnectSignal', data => {
-      console.log("disconnectSignal 수신:", data);
-      if (peer && !peer.destroyed) {
-        peer.destroy();
-      }
-      statusElem.innerText = '연결 끊어짐';
-      statusElem.classList.replace('text-green-600', 'text-red-600');
-      cleanupStream();
-    });
-  </script>
+  }, 3000);
+});
+</script>
 </body>
 </html>
