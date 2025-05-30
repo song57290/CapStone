@@ -18,28 +18,44 @@
 > PC2의 경우 연결 종료 버튼 생성 완료
 
 
-https://sincere-kindness-production.up.railway.app/
-위 사이트는 시그널링 서버주소
-https://railway.com/project/7e029104-22b4-4bdd-baa2-ecd271c88206?environmentId=00d64810-9316-4fc1-965a-8830ab73e8fb
 
+=============================================== 각 클라이언트 폴더에서 아래 명령어를 사용하세요. ===============================================
 
-각 클라이언트 폴더에서 아래 명령어를 사용하세요.
+* 시그널링 서버 실행 *
+ 
+폴더 이동:
 
-PC1 클라이언트 실행 (예: 포트 3000):
+cd ~/my-signaling-server
+npm install
+npm start
 
-bash
-복사
+시그널링 서버 실행(윈도우)
+cd C:\Users\song5\my-signaling-server
+npm start
+
+* PC1 클라이언트 실행 (예: 포트 3000): *
+
 cd ~/CapStone/webrtc-robot-arm/client/pc1
 npx http-server -p 3000
-브라우저에서 http://127.0.0.1:3000로 접속하세요.
 
-PC2 클라이언트 실행 (예: 포트 3001):
+접속:
+  http://127.0.0.1:3000
+  http://192.168.35.25:3000
 
-bash
-복사
+
+
+* PC2 클라이언트 실행 (예: 포트 3001): *
+
 cd ~/CapStone/webrtc-robot-arm/client/pc2
-npx http-server -p 3001
-브라우저에서 http://127.0.0.1:3001 (또는 PC2의 실제 IP와 포트)로 접속하세요.
+npx http-server -S -C 192.168.35.245.pem -K 192.168.35.245-key.pem -p 3001
+
+
+접속:
+  https://127.0.0.1:3001
+  https://192.168.35.245:3001
+
+=============================================== 각 클라이언트 폴더에서 아래 명령어를 사용하세요. ===============================================
+
 
 
 5/30
