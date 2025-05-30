@@ -83,3 +83,9 @@ async function setupWebRTC() {
 
 // WebRTC 설정 실행
 setupWebRTC();
+
+// 새로고침/페이지 닫을 때 clean-up
+window.addEventListener('beforeunload', () => {
+  ws.close();
+  pc.close();
+});

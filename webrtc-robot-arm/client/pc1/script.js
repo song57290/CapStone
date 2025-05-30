@@ -45,8 +45,10 @@ async function setupWebRTC() {
             console.log("Data channel opened");
         };
         dataChannel.onclose = () => {
-            console.log("Data channel closed");
+            console.log("Data channel closed, attempting reconnect...");
+            setupWebRTC();
         };
+        
         dataChannel.onmessage = (event) => {
             console.log("Received message:", event.data);
         };
