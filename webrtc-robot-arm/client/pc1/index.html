@@ -101,7 +101,7 @@
 
   initializePeer();
 
-  // 🎮 Gamepad로 조이스틱 데이터 송신
+  //Gamepad로 조이스틱 데이터 송신
   function updateGamepad() {
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
     if (gamepads[0]) {
@@ -110,8 +110,33 @@
         axes: gp.axes.map(v => +v.toFixed(2)),
         buttons: gp.buttons.map(b => b.pressed ? 1 : 0)
       };
-      const displayText = `X: ${data.axes[0]}, Y: ${data.axes[1]}, Z: ${data.axes[3] || 0}, LB: ${data.buttons[4] || 0}, RB: ${data.buttons[5] || 0}`;
-      document.getElementById('outgoingData').innerText = displayText;
+
+
+      const displayText = `X: ${data.axes[0]}, Y: ${data.axes[1]}, Z: ${data.axes[3] || 0}, A버튼: ${data.buttons[0] || 0}, B버튼: ${data.buttons[1] || 0}`;
+      document.getElementById('outgoingData').innerHTML = `
+      <div class="flex flex-wrap justify-center gap-4 text-lg font-bold">
+        |<div class="flex items-center gap-1">
+          X축:
+          <span class="text-black w-10 inline-block text-center">${data.axes[0]}</span>
+        </div>|
+        <div class="flex items-center gap-1">
+          Y축:
+          <span class="text-black w-10 inline-block text-center">${data.axes[1]}</span>
+        </div>|
+        <div class="flex items-center gap-1">
+          Z축:
+          <span class="text-black w-10 inline-block text-center">${data.axes[3] || 0}</span>
+        </div>|
+        <div class="flex items-center gap-1">
+          A버튼:
+          <span class="text-black w-10 inline-block text-center">${data.buttons[0] || 0}</span>
+        </div>|
+        <div class="flex items-center gap-1">
+          B버튼:
+          <span class="text-black w-10 inline-block text-center">${data.buttons[1] || 0}</span>
+        </div>|
+      </div>
+    `;
       if (peer && peer.connected) {
         peer.send(JSON.stringify(data));
       }
