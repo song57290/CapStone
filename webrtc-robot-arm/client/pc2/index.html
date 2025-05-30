@@ -1,53 +1,64 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <title>PC2 - 조이스틱 데이터 수신 및 화면 송출</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    #status { font-weight: bold; margin-bottom: 10px; }
-    #joystickData { font-size: 1.2em; margin-bottom: 10px; }
-    video { width: 1280px; height: 720px; background: #000; }
-    button, input { font-size: 1em; padding: 5px; margin: 5px; }
-    .disconnect-btn {
-      background-color: red;
-      color: white;
-      border: none;
-      padding: 10px 10px;
-      cursor: pointer;
-      vertical-align: middle;
-    }
-  </style>
-</head>
-<body>
-  <h1>
-    PC2: 조이스틱 데이터 수신 및 화면 송출
-    <button id="disconnectButton" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded text-white text-sm">연결 종료</button>
-  </h1>
-  <div id="status" class="font-semibold text-lg text-green-700">연결 대기중...</div>
-  <div id="joystickData" class="font-semibold text-lg text-blue-700">데이터 없음 </div>
-  <video id="localVideo" autoplay playsinline muted></video>
-  <br>
-  <div>
-    <label for="videoWidth" class="font-semibold text-lg text-balck-1000"> Width:</label>
-    <input type="number" id="videoWidth" value="1280">
-    <label for="videoHeight"class="font-semibold text-lg text-balck-1000"> Height:</label>
-    <input type="number" id="videoHeight" value="720">
-    <button id="updateSize">Update Video Size</button>
-  </div>
+  <head>
+    <meta charset="UTF-8" />
+    <title>PC2 - 조이스틱 데이터 수신 및 화면 송출</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
 
-  <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.0/simplepeer.min.js"></script>
-  <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+  <!--상단바-->
+<header class="flex items-center justify-between p-4 bg-blue-800 text-white">
+  <div class="flex items-center gap-4">
+        <img src="https://blog.kakaocdn.net/dn/71hSN/btsJTBBLxY4/JjQxPDPxp1BZhDPm9u0bEK/img.gif" alt="로고 이미지" class="h-14 w-auto rounded-4xl">
+    <h1 class="text-xl font-bold whitespace-nowrap">PC2: 조이스틱 데이터 수신 및 화면 송출</h1>
+  </div>
+  <div class="flex gap-2">
+    <button id = "reconnectButton" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">재연결</button>
+    <button id = "disconnectButton" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded ">연결 종료</button>
+  </div>
+</header>
+
+
+  <main class="flex flex-col gap-4 p-4">
+  <!-- 위쪽: 상태 및 조이스틱 데이터 -->
+  <section class="flex flex-col gap-2 rounded bg-white p-4 shadow">
+    <div id="status" class="text-lg font-semibold text-yellow-600">연결 대기중...</div>
+    <div id="joystickData" class="text-gray-700 text-center">수신 데이터 없음</div>
+  </section>
+
+  
+
+  <!-- 중간: 비디오 화면 -->
+  <section class="flex flex-col gap-4">
+    <video id="localVideo" autoplay playsinline muted class="h-auto w-full rounded bg-black shadow"></video>
+
+    <!-- 아래쪽: 사이즈 조절 박스 -->
+    <div class="flex flex-wrap items-center gap-2 rounded bg-white p-2 shadow">
+      <label for="videoWidth" class="text-sm">Width:</label>
+      <input type="number" id="videoWidth" value="1024" class="w-24 rounded border p-1 text-sm" />
+      <label for="videoHeight" class="text-sm">Height:</label>
+      <input type="number" id="videoHeight" value="768" class="w-24 rounded border p-1 text-sm" />
+      <button id="updateSize" class="rounded bg-blue-600 px-2 py-1 text-sm text-white hover:bg-blue-700">사이즈 적용</button>
+    </div>
+  </section>
+</main>
+
+
+
+    <script src="https://cdn.jsdelivr.net/npm/simple-peer@9.11.0/simplepeer.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+    <script src="publish.js"></script>
+
+    <body>
 
   <script>
     const signalingServer = 'https://my-signaling-server-uo91.onrender.com';
     const socket = io(signalingServer, { transports: ['websocket'] });
     let peer = null;
     let localStream = null;
-    let connectionActive = false;  // 연결 상태 플래그
+    let connectionActive = false;
     const statusElem = document.getElementById('status');
 
-    // 화면 공유 스트림 정리 함수
     function cleanupStream() {
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
@@ -56,7 +67,6 @@
       document.getElementById('localVideo').srcObject = null;
     }
 
-    // Peer 초기화 함수
     function initializePeer() {
       if (peer && !peer.destroyed) {
         peer.destroy();
@@ -71,21 +81,18 @@
         socket.emit('signal', data);
       });
 
-      // 연결 성립 시 화면 공유 시작
       peer.on('connect', () => {
         connectionActive = true;
         statusElem.innerText = 'PC1과 연결됨';
         startScreenShare();
       });
 
-      // close 이벤트로 연결 종료 처리
       peer.on('close', () => {
         connectionActive = false;
         statusElem.innerText = '연결 끊어짐';
         cleanupStream();
       });
 
-      // 에러 핸들러 - 'User-Initiated Abort' 에러는 무시
       peer.on('error', err => {
         if (err.message && err.message.indexOf("User-Initiated Abort") !== -1) {
           console.log("의도한 연결 종료에 따른 에러 무시:", err.message);
@@ -105,41 +112,25 @@
       });
     }
 
-    // 최초 Peer 생성
-    initializePeer();
-
-    socket.on('signal', data => {
-      try {
-        if (!peer || peer.destroyed) initializePeer();
-        peer.signal(data);
-      } catch (e) {
-        console.error("signal 처리 오류:", e);
-      }
-    });
-
-    // PC1에서 disconnectSignal 이벤트 수신 시 연결 종료 처리
-    socket.on('disconnectSignal', data => {
-      console.log("disconnectSignal 수신:", data);
-      if (peer && !peer.destroyed) {
-        peer.destroy();
-      }
-      connectionActive = false;
-      statusElem.innerText = '연결 끊어짐';
-      cleanupStream();
-    });
-
-    // "연결 종료" 버튼 클릭 시 처리
+    // "연결 종료" 버튼
     document.getElementById('disconnectButton').addEventListener('click', () => {
+      console.log("PC1: 연결 종료 버튼 클릭 – disconnectSignal 전송 후 Peer 종료");
+      socket.emit('disconnectSignal', { from: 'PC1' }); // 먼저 이벤트 전송
       if (peer && !peer.destroyed) {
-        peer.destroy();
+        peer.destroy(); // 이후 Peer 종료
       }
-      socket.emit('disconnectSignal', { from: 'PC2' });
-      connectionActive = false;
-      statusElem.innerText = '연결 끊어짐';
-      cleanupStream();
+      document.getElementById('status').innerText = '연결 끊어짐';
+     });
+
+
+    // "재연결" 버튼
+    document.getElementById('reconnectButton').addEventListener('click', () => {
+      console.log("PC1: 재연결 버튼 클릭 – 새로운 Peer 생성 및 재연결 요청 전송");
+      initializePeer();
+      document.getElementById('status').innerText = '연결 대기중...';
+      socket.emit('reconnectRequest', { from: 'PC2' });
     });
 
-    // 화면 공유 시작 함수
     function startScreenShare() {
       navigator.mediaDevices.getDisplayMedia({
         video: { width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -150,7 +141,7 @@
         const videoElem = document.getElementById('localVideo');
         videoElem.srcObject = stream;
         videoElem.play();
-        // 연결된 Peer에 화면 공유 트랙 추가
+
         stream.getTracks().forEach(track => {
           try {
             peer.addTrack(track, stream);
@@ -169,7 +160,29 @@
       v.style.width = w + 'px';
       v.style.height = h + 'px';
     });
+
+    initializePeer();
+    socket.on('signal', data => {
+      try {
+        if (!peer || peer.destroyed) initializePeer();
+        peer.signal(data);
+      } catch (e) {
+        console.error("signal 처리 오류:", e);
+      }
+    });
+
+    socket.on('disconnectSignal', data => {
+      console.log("disconnectSignal 수신:", data);
+      if (peer && !peer.destroyed) {
+        peer.destroy();
+      }
+      connectionActive = false;
+      statusElem.innerText = '연결 끊어짐';
+      cleanupStream();
+    });
   </script>
 </body>
-<script src="publish.js"></script>
-</html>
+
+  <script src="publish.js"></script>
+  
+  </html>
