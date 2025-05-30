@@ -2,19 +2,17 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>PC2 - 조이스틱 데이터 수신 및 화면 송출</title>
+  <title>PC1 - 실제 조이스틱 데이터 전송 및 영상 수신</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- ROSLIBJS 추가 -->
-  <script src="https://cdn.jsdelivr.net/gh/RobotWebTools/roslibjs/build/roslib.min.js"></script>
 </head>
 
-<body> <!--<body> 태그 시작 -->
+<body class="bg-gray-100">
 
 <!-- 상단바 -->
 <header class="flex items-center justify-between p-4 bg-blue-800 text-white">
   <div class="flex items-center gap-4">
     <img src="https://blog.kakaocdn.net/dn/71hSN/btsJTBBLxY4/JjQxPDPxp1BZhDPm9u0bEK/img.gif" alt="로고 이미지" class="h-14 w-auto rounded-4xl">
-    <h1 class="text-xl font-bold whitespace-nowrap">PC2: 조이스틱 데이터 수신 및 화면 송출</h1>
+    <h1 class="text-xl font-bold whitespace-nowrap">PC1 - 실제 조이스틱 데이터 전송 및 영상 수신</h1>
   </div>
   <div class="flex gap-2">
     <button id="reconnectButton" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">재연결</button>
@@ -26,20 +24,23 @@
   <!-- 상태 및 조이스틱 데이터 -->
   <section class="flex flex-col gap-2 rounded bg-white p-4 shadow">
     <div id="status" class="text-lg font-semibold text-yellow-600">연결 대기중...</div>
-    <div id="joystickData" class="text-gray-700 text-center">수신 데이터 없음</div>
+    <div id="outgoingData" class="text-gray-700 text-center">전송 데이터 없음</div>
   </section>
 
   <!-- 비디오 화면 -->
   <section class="flex flex-col gap-4">
-    <video id="localVideo" autoplay playsinline muted class="h-auto w-full rounded bg-black shadow"></video>
+    <video id="remoteVideo" autoplay playsinline muted class="h-auto w-full rounded bg-black shadow"></video>
 
-    <!-- 사이즈 조절 -->
     <div class="flex flex-wrap items-center gap-2 rounded bg-white p-2 shadow">
       <label for="videoWidth" class="text-sm">Width:</label>
-      <input type="number" id="videoWidth" value="1920" class="w-24 rounded border p-1 text-sm" />
+      <input type="number" id="videoWidth" value="1280" class="w-24 rounded border p-1 text-sm" />
       <label for="videoHeight" class="text-sm">Height:</label>
-      <input type="number" id="videoHeight" value="1080" class="w-24 rounded border p-1 text-sm" />
+      <input type="number" id="videoHeight" value="720" class="w-24 rounded border p-1 text-sm" />
       <button id="updateSize" class="rounded bg-blue-600 px-2 py-1 text-sm text-white hover:bg-blue-700">사이즈 적용</button>
+      <div class="ml-auto flex gap-4">
+        <button id="playButton" class="bg-gray-500 hover:bg-gray-400 text-white px-4 py-2 rounded-4xl">재생 시작</button>
+        <button id="pauseButton" class="bg-gray-500 hover:bg-gray-400 text-white px-4 py-2 rounded-4xl">재생 중단</button>
+      </div>
     </div>
   </section>
 </main>
@@ -51,122 +52,112 @@
   const signalingServer = 'https://my-signaling-server-uo91.onrender.com';
   const socket = io(signalingServer, { transports: ['websocket'] });
   let peer = null;
-  let localStream = null;
-  const statusElem = document.getElementById('status');
 
-  function cleanupStream() {
-    if (localStream) {
-      localStream.getTracks().forEach(track => track.stop());
-      localStream = null;
+  // 시그널링 서버로부터 받은 signal
+  socket.on('signal', data => {
+    console.log("PC1: Received signal:", data);
+    if (peer) {
+      try {
+        peer.signal(data);
+      } catch (e) {
+        console.error("PC1: Error processing signal:", e);
+      }
     }
-    document.getElementById('localVideo').srcObject = null;
-  }
+  });
 
+  // Peer 초기화
   function initializePeer() {
     if (peer && !peer.destroyed) {
       peer.destroy();
     }
     peer = new SimplePeer({
-      initiator: false,
+      initiator: true,
       trickle: false,
       config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
     });
 
     peer.on('signal', data => {
+      console.log("PC1: Peer signal generated:", data);
       socket.emit('signal', data);
     });
 
     peer.on('connect', () => {
-      statusElem.innerText = 'PC1과 연결됨';
-      startScreenShare();
+      document.getElementById('status').innerText = 'PC2와 연결됨';
+      console.log("PC1: Peer 연결 성공");
     });
 
     peer.on('close', () => {
-      statusElem.innerText = '연결 끊어짐';
-      cleanupStream();
+      document.getElementById('status').innerText = '연결 끊어짐';
+      console.log("PC1: Peer 연결 종료됨");
     });
 
-    peer.on('error', err => {
-      if (err.message && err.message.indexOf("User-Initiated Abort") !== -1) {
-        console.log("의도한 연결 종료에 따른 에러 무시:", err.message);
-      } else {
-        console.error("Peer error:", err);
-      }
-    });
-
-    peer.on('data', data => {
-      try {
-        const d = JSON.parse(data);
-        document.getElementById('joystickData').innerText =
-          `X축: ${d.x}, Y축: ${d.y}, Z축: ${d.z}, 잡기(LB): ${d.lb}, 놓기(RB): ${d.rb}`;
-      } catch (e) {
-        console.error("데이터 파싱 오류:", e);
-      }
+    peer.on('track', (track, stream) => {
+      console.log("PC1: Received track:", track.kind);
+      const remoteVideo = document.getElementById('remoteVideo');
+      remoteVideo.srcObject = stream;
     });
   }
 
+  initializePeer();
+
+  // 🎮 Gamepad를 읽어서 데이터를 전송
+  function updateGamepad() {
+    const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+    if (gamepads[0]) {
+      const gp = gamepads[0];
+      const data = {
+        axes: gp.axes.map(v => +v.toFixed(2)),
+        buttons: gp.buttons.map(b => b.pressed ? 1 : 0)
+      };
+      const displayText = `X: ${data.axes[0]}, Y: ${data.axes[1]}, Z: ${data.axes[3] || 0}, LB: ${data.buttons[4] || 0}, RB: ${data.buttons[5] || 0}`;
+      document.getElementById('outgoingData').innerText = displayText;
+      if (peer && peer.connected) {
+        peer.send(JSON.stringify(data));
+      }
+    }
+    requestAnimationFrame(updateGamepad);
+  }
+
+  window.addEventListener("gamepadconnected", () => {
+    console.log("PC1: Gamepad connected");
+    updateGamepad();
+  });
+
+  window.addEventListener("gamepaddisconnected", () => {
+    console.log("PC1: Gamepad disconnected");
+  });
+
+  // 영상 컨트롤
+  document.getElementById('playButton').addEventListener('click', () => {
+    document.getElementById('remoteVideo').play().catch(err => console.error("PC1: Video play error:", err));
+  });
+
+  document.getElementById('pauseButton').addEventListener('click', () => {
+    document.getElementById('remoteVideo').pause();
+    console.log("PC1: Video paused");
+  });
+
+  document.getElementById('updateSize').addEventListener('click', () => {
+    const width = document.getElementById('videoWidth').value;
+    const height = document.getElementById('videoHeight').value;
+    const remoteVideo = document.getElementById('remoteVideo');
+    remoteVideo.style.width = width + 'px';
+    remoteVideo.style.height = height + 'px';
+    console.log(`PC1: Video size updated to ${width}x${height}`);
+  });
+
   document.getElementById('disconnectButton').addEventListener('click', () => {
-    socket.emit('disconnectSignal', { from: 'PC2' });
+    socket.emit('disconnectSignal', { from: 'PC1' });
     if (peer && !peer.destroyed) {
       peer.destroy();
     }
-    statusElem.innerText = '연결 끊어짐';
+    document.getElementById('status').innerText = '연결 끊어짐';
   });
 
   document.getElementById('reconnectButton').addEventListener('click', () => {
     initializePeer();
-    statusElem.innerText = '연결 대기중...';
-    socket.emit('reconnectRequest', { from: 'PC2' });
-  });
-
-  function startScreenShare() {
-    navigator.mediaDevices.getDisplayMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false
-    })
-    .then(stream => {
-      localStream = stream;
-      const videoElem = document.getElementById('localVideo');
-      videoElem.srcObject = stream;
-      videoElem.play();
-
-      stream.getTracks().forEach(track => {
-        try {
-          peer.addTrack(track, stream);
-        } catch (err) {
-          console.error("트랙 추가 오류:", err);
-        }
-      });
-    })
-    .catch(err => console.error("화면 공유 오류:", err));
-  }
-
-  document.getElementById('updateSize').addEventListener('click', () => {
-    const w = document.getElementById('videoWidth').value;
-    const h = document.getElementById('videoHeight').value;
-    const v = document.getElementById('localVideo');
-    v.style.width = w + 'px';
-    v.style.height = h + 'px';
-  });
-
-  initializePeer();
-
-  socket.on('signal', data => {
-    try {
-      if (!peer || peer.destroyed) initializePeer();
-      peer.signal(data);
-    } catch (e) {
-      console.error("signal 처리 오류:", e);
-    }
-  });
-
-  socket.on('disconnectSignal', data => {
-    console.log("disconnectSignal 수신:", data);
-    if (peer && !peer.destroyed) {
-      peer.destroy();
-    }
-    statusElem.innerText = '연결 끊어짐';
-    cleanupStream();
+    document.getElementById('status').innerText = '연결 대기중...';
+    socket.emit('reconnectRequest', { from: 'PC1' });
   });
 </script>
 
