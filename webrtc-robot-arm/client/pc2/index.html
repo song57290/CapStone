@@ -12,7 +12,7 @@
   <!-- 상단바 -->
   <header class="flex items-center justify-between p-4 bg-blue-800 text-white">
     <div class="flex items-center gap-4">
-      <img src="https://blog.kakaocdn.net/dn/71hSN/btsJTBBLxY4/JjQxPDPxp1BZhDPm9u0bEK/img.gif" alt="로고 이미지" class="h-14 w-auto rounded-4xl">
+      <img src="https://blog.kakaocdn.net/dn/71hSN/btsJTBBLxY4/JjQxPDPxp1BZhDPm9u0bEK/img.gif" alt="로고 이미지" class="h-14 w-auto rounded-full">
       <h1 class="text-xl font-bold whitespace-nowrap">PC2: 조이스틱 데이터 수신 및 화면 송출</h1>
     </div>
     <div class="flex gap-2">
@@ -76,14 +76,18 @@
       peer.on('connect', () => {
         statusElem.innerText = 'PC1과 연결됨';
         statusElem.classList.replace('text-yellow-600', 'text-green-600');
+        statusElem.classList.add('text-green-600');
         startScreenShare();
       });
 
       peer.on('close', () => {
-        statusElem.innerText = '연결 끊어짐';
-        statusElem.classList.replace('text-green-600', 'text-red-600');
-        cleanupStream();
+       const statusElem = document.getElementById('status');
+       statusElem.innerText = '연결 끊어짐';
+       statusElem.classList.remove('text-yellow-600', 'text-green-600');
+       statusElem.classList.add('text-red-600');
+      console.log("PC1: Peer 연결 종료됨");
       });
+
 
       peer.on('error', err => {
         if (err.message && err.message.includes("User-Initiated Abort")) {
@@ -137,12 +141,22 @@
 
     document.getElementById('disconnectButton').addEventListener('click', () => {
       if (peer && !peer.destroyed) {
-        peer.destroy();
-      }
-      socket.emit('disconnectSignal', { from: 'PC2' });
-      statusElem.innerText = '연결 끊어짐';
-      statusElem.classList.replace('text-green-600', 'text-red-600');
-    });
+      peer.destroy();
+    }
+    socket.emit('disconnectSignal', { from: 'PC2' });
+
+    // 연결 끊어짐 표시
+    statusElem.innerText = '연결 끊어짐';
+    statusElem.classList.remove('text-green-600', 'text-yellow-600');
+    statusElem.classList.add('text-red-600');
+
+    // 3초 후 연결 대기중으로 상태 복원
+    setTimeout(() => {
+      statusElem.innerText = '연결 대기중...';
+      statusElem.classList.remove('text-red-600');
+      statusElem.classList.add('text-yellow-600');
+    }, 3000); // 3초(3000ms) 후 복원
+  });
 
     document.getElementById('reconnectButton').addEventListener('click', () => {
       initializePeer();
