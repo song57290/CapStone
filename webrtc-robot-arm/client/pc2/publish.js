@@ -4,15 +4,9 @@ const ros = new ROSLIB.Ros({
   url: 'ws://localhost:9090'
 });
 
-<<<<<<< HEAD
 ros.on('connection', () => console.log('ROS 연결 성공'));
 ros.on('error', (error) => console.error('ROS 연결 오류:', error));
 ros.on('close', () => console.log('ROS 연결 종료'));
-=======
-ros.on('connection', () => console.log('✅ ROS 연결 성공'));
-ros.on('error', (error) => console.error('❌ ROS 연결 오류:', error));
-ros.on('close', () => console.log('🔌 ROS 연결 종료'));
->>>>>>> 3727dc4dad615dbab3ef7c7f13aad16811acc8ba
 
 // Joy Publisher 생성
 const joyPublisher = new ROSLIB.Topic({
@@ -42,21 +36,12 @@ pc.onicecandidate = (event) => {
 // 데이터 채널 수신
 pc.ondatachannel = (event) => {
   const dataChannel = event.channel;
-<<<<<<< HEAD
   dataChannel.onopen = () => console.log("데이터 채널 열림");
   dataChannel.onclose = () => console.log("데이터 채널 닫힘");
   dataChannel.onmessage = (event) => {
     try {
       const joystickData = JSON.parse(event.data);
       console.log("수신된 조이스틱 데이터:", joystickData);
-=======
-  dataChannel.onopen = () => console.log("📡 데이터 채널 열림");
-  dataChannel.onclose = () => console.log("📡 데이터 채널 닫힘");
-  dataChannel.onmessage = (event) => {
-    try {
-      const joystickData = JSON.parse(event.data);
-      console.log("🕹️ 수신된 조이스틱 데이터:", joystickData);
->>>>>>> 3727dc4dad615dbab3ef7c7f13aad16811acc8ba
 
       // ROS Joy 메시지 생성 및 퍼블리시
       const joyMsg = new ROSLIB.Message({
@@ -65,17 +50,10 @@ pc.ondatachannel = (event) => {
       });
 
       joyPublisher.publish(joyMsg);
-<<<<<<< HEAD
       console.log("ROS에 Joy 메시지 전송:", joyMsg);
 
     } catch (e) {
       console.error("데이터 처리 오류:", e);
-=======
-      console.log("📤 ROS에 Joy 메시지 전송:", joyMsg);
-
-    } catch (e) {
-      console.error("⚠️ 데이터 처리 오류:", e);
->>>>>>> 3727dc4dad615dbab3ef7c7f13aad16811acc8ba
     }
   };
 };
@@ -93,14 +71,7 @@ ws.onmessage = async (event) => {
   }
 };
 
-<<<<<<< HEAD
 ws.onopen = () => console.log("시그널링 서버 연결됨");
 ws.onerror = (error) => console.error("시그널링 오류:", error);
 
-console.log(" publish.js 실행 완료!");
-=======
-ws.onopen = () => console.log("🖧 시그널링 서버 연결됨");
-ws.onerror = (error) => console.error("❌ 시그널링 오류:", error);
-
-console.log("🚀 publish.js 실행 완료!");
->>>>>>> 3727dc4dad615dbab3ef7c7f13aad16811acc8ba
+console.log("publish.js 실행 완료!");
